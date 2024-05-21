@@ -31,7 +31,7 @@ jobs:
         WORKFLOW_FILE_NAME=${{ github.event.inputs.workflow_file_name }}
         TAG_NAME=${GITHUB_REF#refs/tags/}
         REPO_LIST=${{ github.event.inputs.chain }}
-        CURRENT_REPO=$(echo "${{ github.repository }}" | cut -d'/' -f2)  # This will be 'maven_common'
+        CURRENT_REPO=$(echo "${{ github.repository }}" | cut -d'/' -f2)  # This will be 'common'
         NEXT_REPO_NAME=""
         FOUND_CURRENT=false
 

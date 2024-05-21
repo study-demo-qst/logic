@@ -1,4 +1,4 @@
-package com.example.maven_logic;
+package com.example.logic;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

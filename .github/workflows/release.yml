@@ -10,7 +10,7 @@ on:
     tags:
       - '*リリース'
   repository_dispatch:
-    types: [maven_common_build_success]
+    types: [common_build_success]
   workflow_dispatch:
 
 jobs:

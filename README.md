@@ -1,7 +1,7 @@
 # templateプロジェクトの使い方
 1. Webからリポジトリ新規作成。templateを指定
-1. pom.xmlのmaven_logicを変更（2か所）
-1. pom.xmlのmaven_commonを変更（2か所）
+1. pom.xmlのlogicを変更（2か所）
+1. pom.xmlのcommonを変更（2か所）
 1. settingsは引き継がれない
     1. Personal Access Token作成。read:packagesだけでOK
 1. リポジトリ作成と同時にactionsが実行され、NGになっている。再実行
