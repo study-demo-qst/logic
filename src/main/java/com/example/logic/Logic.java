@@ -1,7 +1,7 @@
 package com.example.logic;
 
-import com.example.common.CryptoUtil;
-import com.example.common.RandomUtil;
+import com.example.common.util.CryptoUtil;
+import com.example.common.util.RandomUtil;
 
 public class Logic {
 
