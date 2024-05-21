@@ -1,0 +1,64 @@
+name: release-build
+
+on: 
+  repository_dispatch:
+    types: [maven_common_build_success]
+  workflow_dispatch:
+    inputs:
+      chain:
+        description: 'Array of repositories in build chain'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: none
+
+    steps:
+      # Set Up前にcheckout必要
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.client_payload.tag }}  # Use the tag from the payload
+
+      - name: Set Up
+        id: setup
+        uses: ./.github/workflows
+
+      # 別リポジトリのPackage参照にはPATが必要
+      - name: Build with Maven
+        run: mvn --settings ./settings.xml clean install -Dbuild_time=${{ steps.setup.outputs.build_time }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.PKG_READ_ETERNAL }}
+
+  trigger_next_build:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: none
+      packages: none
+    steps:
+      - name: Trigger next repo build
+        if: success()  # Only run this step if the build was successful
+        run: |
+          CHAIN_JSON=${{ toJson(github.event.inputs.chain) }}
+          CURRENT_REPO=${{ github.repository }}
+          NEXT_REPO=""
+          FOUND_CURRENT=false
+          for REPO in $(echo $CHAIN_JSON | jq -r '.[]'); do
+            if [ "$FOUND_CURRENT" = true ]; then
+              NEXT_REPO=$REPO
+              break
+            fi
+            if [ "$REPO" = "$CURRENT_REPO" ]; then
+              FOUND_CURRENT=true
+            fi
+          done
+          if [ -n "$NEXT_REPO" ]; then
+            curl -X POST \
+                -H "Authorization: token ${{ secrets.PKG_READ_ETERNAL }}" \
+                -H "Accept: application/vnd.github.v3+json" \
+                https://api.github.com/repos/coding-sample/$NEXT_REPO/dispatches \
+                -d '{"event_type": "'$(echo $CHAIN_JSON | jq -r '.[1:] | @csv')'", "client_payload": {"tag": "${{ github.ref_name }}"} }'
+          fi

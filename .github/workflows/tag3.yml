@@ -1,0 +1,74 @@
+name: release build for tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      chain:
+        description: 'Array of repositories in build chain'
+        required: true
+      workflow_file_name:
+        description: 'The name of the workflow file to trigger'
+        required: true
+      tag_name:
+        description: 'The name of the tag to use for triggering the workflow'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: none
+
+    steps:
+      # Checkout is necessary before Set Up
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag_name }}  # Use the tag from the input
+
+      - name: Set Up
+        id: setup
+        uses: ./.github/workflows
+
+      # PAT is necessary for referencing packages from other repositories
+      - name: Build with Maven
+        run: mvn --settings ./settings.xml clean install -Dbuild_time=${{ steps.setup.outputs.build_time }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.PKG_READ_ETERNAL }}
+
+  trigger_next_build:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: none
+      packages: none
+    steps:
+      - name: Trigger next repo build
+        if: success()  # Only run this step if the build was successful
+        run: |
+          CHAIN_JSON=($(echo '${{ github.event.inputs.chain }}' | jq -r '. | @sh'))
+          WORKFLOW_FILE_NAME=${{ github.event.inputs.workflow_file_name }}
+          TAG_NAME=${{ github.event.inputs.tag_name }}
+          CURRENT_REPO=$(echo "${{ github.repository }}" | cut -d'/' -f2)  # This will be 'maven_logic'
+          NEXT_REPO_NAME=""
+          FOUND_CURRENT=false
+
+          echo "Chain is ${CHAIN_JSON[@]}"
+
+          for REPO in ${CHAIN_JSON[@]}; do
+            if [ "$FOUND_CURRENT" = true ]; then
+              NEXT_REPO_NAME=$REPO
+              break
+            fi
+            if [ "$REPO" = "$CURRENT_REPO" ]; then
+              FOUND_CURRENT=true
+            fi
+          done
+          if [ -n "$NEXT_REPO_NAME" ]; then
+            echo "Triggering workflow in $NEXT_REPO_NAME with file $WORKFLOW_FILE_NAME and tag $TAG_NAME"
+            curl -X POST \
+                -H "Authorization: token ${{ secrets.PKG_READ_ETERNAL }}" \
+                -H "Accept: application/vnd.github.v3+json" \
+                https://api.github.com/repos/coding-sample/$NEXT_REPO_NAME/actions/workflows/$WORKFLOW_FILE_NAME/dispatches \
+                -d '{"ref": "'$TAG_NAME'", "inputs": {"chain": '${CHAIN_JSON[@]}', "workflow_file_name": "'$WORKFLOW_FILE_NAME'", "tag_name": "'$TAG_NAME'"}}'
+          fi

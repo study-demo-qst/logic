@@ -1,0 +1,82 @@
+name: release-build
+
+on: 
+  repository_dispatch:
+    types: [maven_common_build_success]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: none
+
+    steps:
+    # Set Up前にcheckout必要
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.client_payload.tag }}  # Use the tag from the payload
+
+    - name: Set Up
+      id: setup
+      uses: ./.github/workflows
+
+    # 別リポジトリのPackage参照にはPATが必要
+    - name: Build with Maven
+      run: mvn --settings ./settings.xml clean install -Dbuild_time=${{ steps.setup.outputs.build_time }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.PKG_READ_ETERNAL }}
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: src
+        path: .
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: none
+
+    steps:
+    # Set Up前にcheckout必要
+    - uses: actions/checkout@v4
+    
+    - name: Set Up
+      id: setup
+      uses: ./.github/workflows
+
+    # 別リポジトリのPackage参照にはPATが必要
+    - name: Test
+      run: mvn --settings ./settings.xml test -Dbuild_time=${{ steps.setup.outputs.build_time }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.PKG_READ_ETERNAL }}
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    # Set Up前にcheckout必要
+    - uses: actions/checkout@v4
+    
+    - name: Set Up
+      id: setup
+      uses: ./.github/workflows
+
+    # 別リポジトリのPackage参照にはPATが必要
+    - name: Build with Maven
+      run: mvn --settings ./settings.xml clean install -Dbuild_time=${{ steps.setup.outputs.build_time }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.PKG_READ_ETERNAL }}
+
+    - name: Deploy to GitHub Packages
+      run: mvn --settings ./settings.xml deploy -DskipTests -Dbuild_time=${{ steps.setup.outputs.build_time }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,77 @@
+name: chain build for tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      chain:
+        description: 'Comma separated list of repositories in build chain'
+        required: false
+      tag:
+        description: 'tag'
+        required: false
+      workflow_file_name:
+        description: 'The name of the workflow file to trigger'
+        required: true
+      chain_identifier:
+        description: 'Identifier to control job execution. Use "build" to trigger chain builds, "tag" for tagging repository.'
+        required: true
+
+jobs:
+  trigger_next_build:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.chain_identifier == 'build' }}
+    permissions:
+      contents: none
+      packages: none
+    steps:
+    - name: Trigger next repo build
+      if: success()  # Only run this step if the build was successful
+      run: |
+        IFS=',' read -r -a CHAIN_ARRAY <<< "${{ github.event.inputs.chain }}"
+        WORKFLOW_FILE_NAME=${{ github.event.inputs.workflow_file_name }}
+        TAG_NAME=${GITHUB_REF#refs/tags/}
+        REPO_LIST=${{ github.event.inputs.chain }}
+        CURRENT_REPO=$(echo "${{ github.repository }}" | cut -d'/' -f2)  # This will be 'maven_common'
+        NEXT_REPO_NAME=""
+        FOUND_CURRENT=false
+
+        echo "Chain is ${CHAIN_ARRAY[@]}"
+
+        for REPO in "${CHAIN_ARRAY[@]}"; do
+          if [ "$FOUND_CURRENT" = true ]; then
+            NEXT_REPO_NAME=$REPO
+            break
+          fi
+          if [ "$REPO" = "$CURRENT_REPO" ]; then
+            FOUND_CURRENT=true
+          fi
+        done
+        if [ -n "$NEXT_REPO_NAME" ]; then
+          echo "Triggering workflow in $NEXT_REPO_NAME with file $WORKFLOW_FILE_NAME and tag $TAG_NAME"
+          echo https://api.github.com/repos/coding-sample/$NEXT_REPO_NAME/actions/workflows/$WORKFLOW_FILE_NAME/dispatches
+          echo "${{ github.event.inputs.chain }}"
+          curl -X POST \
+              -H "Authorization: token ${{ secrets.PKG_READ_ETERNAL }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              https://api.github.com/repos/coding-sample/$NEXT_REPO_NAME/actions/workflows/$WORKFLOW_FILE_NAME/dispatches \
+              -d "{\"ref\": \"$TAG_NAME\", \"inputs\": {\"chain\": \"$REPO_LIST\", \"workflow_file_name\": \"$WORKFLOW_FILE_NAME\"}}"
+        fi
+
+  tag_repository:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.chain_identifier == 'tag' }}
+    permissions: write-all
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v3
+
+      - name: Create and Push Tag
+        run: |
+          TAG_NAME=${{ github.event.inputs.tag }}
+          echo "Tagging repository with $TAG_NAME"
+          git config --local user.name "GitHub Action"
+          
+          git tag -d "$TAG_NAME" 2>/dev/null || true
+          git push --delete origin "$TAG_NAME" 2>/dev/null || true
+          git tag "$TAG_NAME"
+          git push origin "$TAG_NAME"
