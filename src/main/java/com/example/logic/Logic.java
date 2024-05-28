@@ -129,6 +129,11 @@ public class Logic {
         }
     }
 
+    /**
+     * ランダムな文字列を生成し、復号化して処理します。
+     * @param length
+     * @return
+     */
     public static String generateDecryptAndProcess(int length) {
         try {
             String randomString = generateRandomString(length);

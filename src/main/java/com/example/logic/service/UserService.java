@@ -43,12 +43,7 @@ public class UserService {
      * @return ユーザーのリスト
      */
     public List<User> findByUsername(String username) {
-        List<User> ret = userRepository.findByUsername(username);
-        List<User> ret2 = userRepository.findAll();
-        System.out.println("------------------- ret2");
-        System.out.println(ret2);
-        System.out.println("-------------------");
-        return ret;
+        return userRepository.findByUsername(username);
     }
 
     /**
