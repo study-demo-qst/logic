@@ -1,6 +1,6 @@
 package com.example.logic;
 
-import com.example.common.util.CryptoUtil;
+import com.example.common.util.MyCryptoUtil;
 import com.example.common.util.RandomUtil;
 import java.util.*;
 
@@ -42,7 +42,7 @@ public class Logic {
 
     public static String encryptText(String plainText) {
         try {
-            String encryptedText = CryptoUtil.encrypt(plainText);
+            String encryptedText = MyCryptoUtil.encrypt(plainText);
             // 暗号化後のテキストの確認（冗長な処理）
             if (encryptedText != null) {
                 return encryptedText;
@@ -67,7 +67,7 @@ public class Logic {
             String randomString = RandomUtil.randomString(length);
             // ランダムな文字列生成の冗長なログ出力
             System.out.println("Generated random string: " + randomString);
-            String encryptedRandomString = CryptoUtil.encrypt(randomString);
+            String encryptedRandomString = MyCryptoUtil.encrypt(randomString);
             // 暗号化された文字列の冗長なログ出力
             System.out.println("Encrypted random string: " + encryptedRandomString);
             return encryptedRandomString;
@@ -105,7 +105,7 @@ public class Logic {
     public static String decryptText(String encryptedText) {
         try {
             // 潜在的なバグ：暗号化されたテキストがnullの可能性を考慮していない
-            return CryptoUtil.decrypt(encryptedText);
+            return MyCryptoUtil.decrypt(encryptedText);
         } catch (Exception e) {
             e.printStackTrace();
             return null;

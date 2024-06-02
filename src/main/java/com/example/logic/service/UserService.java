@@ -16,6 +16,10 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private ShopRepository shopRepository;
+
 
     /**
      * 全てのユーザーを取得します。
@@ -43,7 +47,9 @@ public class UserService {
      * @return ユーザーのリスト
      */
     public List<User> findByUsername(String username) {
-        return userRepository.findByUsername(username);
+        List<User> list = userRepository.findByUsername(username);
+        System.out.println("mail:" + list.get(0).getEmail());
+        return list;
     }
 
     /**
